@@ -1,0 +1,122 @@
+#Logistic Regression
+#Project- Diabetes Prediction
+#Import the dataset
+diab <- read.csv(choose.files())
+#Check first 6 dataset
+head(diab)
+tail(diab)
+summary(diab)
+#See the dataset for better understanding
+str(diab)
+
+#Dependent variable= Outcome(binary class)
+#Rest of all the variables are independent variable and
+#all are numeric 
+#Hence we don't need to handle 
+#Scope
+#Pre processing:
+#Part 1: Check missing value
+colSums(is.na(diab))
+summary(diab)
+min(diab$Glucose)
+boxplot(diab$Glucose)
+boxplot(diab$Pregnancies)
+median(diab$Glucose)
+diab$Glucose <- ifelse(diab$Glucose==0,117,diab$Glucose)
+min(diab$Glucose)
+boxplot(diab$BloodPressure)
+median(diab$BloodPressure)
+diab$BloodPressure <- ifelse(diab$BloodPressure==0,72,diab$BloodPressure)
+min(diab$SkinThickness)
+boxplot(diab$Insulin)
+median(diab$Insulin)
+diab$Insulin <- ifelse(diab$Insulin==0,30.5,diab$Insulin)
+min(diab$Insulin)
+boxplot(diab$BMI)
+median(diab$BMI)
+diab$BMI <- ifelse(diab$BMI==0,32,diab$BMI)
+min(diab$BMI)
+#Processing part 1- missing value 
+summary(diab$SkinThickness)
+Q1=23.00
+Q3=32.00
+IQR=Q3-Q1
+pos_outlier=Q3+1.5*IQR
+neg_outlier=Q1-1.5*IQR
+print(pos_outlier)
+print(neg_outlier)
+diab$SkinThickness <- ifelse(diab$SkinThickness<=9.5,10,diab$SkinThickness)
+diab$SkinThickness <- ifelse(diab$SkinThickness>-45.5,44,diab$SkinThickness)
+#Preprocessing part 4
+#Check imbalance dataset
+unique(diab$Outcome)
+dim(diab)
+table(diab$Outcome)
+#Data is balanced, hence, no amendment required
+#Note: Preprocessing part completed
+cor(diab)
+library(corrgram)
+heatmap(cor(diab))
+#Split the data into training and test
+library(caTools)
+set.seed(551)
+split <- sample.split(diab$Outcome,SplitRatio = 0.75)
+split
+table(split)
+training <- subset(diab,split==TRUE)
+test <- subset(diab,split==FALSE)
+print(nrow(training))
+print(nrow(test))
+print(table(split))
+#Building Generalised linear model- "Maximum likelihood Estimation"
+names(diab)
+logit<-glm(Outcome~.,data = training,family='binomial')
+logit
+#To find the best model 
+step(logit)
+logit1<-glm(Outcome~Pregnancies+Glucose+Insulin+BMI+
+      DiabetesPedigreeFunction,family = binomial,
+      data=training)
+logit1
+summary(logit1)
+#Predict the model by using test dataset
+y_pred<-predict(logit1,newdata=test,type='response')
+y_pred
+#Using "MLE" concept to evaluate the model accuracy
+y_pred_result<-ifelse(y_pred>=0.5,1,0)
+y_pred_result
+cbind_test_pred<-cbind(test$Outcome,y_pred_result)
+head(cbind_test_pred)
+cm<-table(test$Outcome,y_pred_result)
+cm
+accuracy <- (106+39)/(106+19+28+39)
+accuracy
+#To check confusion matrix
+library(caret)
+confusionMatrix(cm)
+#Threshold value:0.5, accuracy=0.7552
+#Threshold value: 0.6, accuracy= 0.7604
+#Threshold value: 0.7, accuracy= 0.7604
+#Threshold value: 0.4, accuracy= 0.7292
+y_pred_result1 <- ifelse(y_pred>=0.6,1,0)
+cm1 <- table(test$Outcome,y_pred_result1)
+confusionMatrix(cm1)
+#Random forest
+install.packages("randomForest")
+library(randomForest)
+rf<-randomForest(Outcome~.,data=training)
+rf
+rf_pred<-predict(rf,newdata=test)
+rf_pred<-ifelse(rf_pred>=0.6,1,0)
+cm<-table(test$Outcome,rf_pred)
+confusionMatrix(cm)
+#AUC or ROC
+#Area under curve and receiver operating characteristic
+install.packages("ROCR")
+library(ROCR)
+ROCRperformance<-prediction(y_pred_result1,test$Outcome)
+ROCRperformance
+ROCvalue<-performance(ROCRperformance,'tpr','fpr')
+ROCvalue
+plot(ROCvalue)
+abline(a=0,b=1)
